@@ -1,0 +1,89 @@
+#!/bin/sh
+set -e
+
+# The following block allows to use this script as a yum plugin when there were
+# packages installed and/or updated.
+if [ -n "$1" ]; then
+	unset RUN
+	for arg in "$@"; do
+		case $arg in
+			install|update)
+					RUN=1
+					;;
+			remove)
+					;;
+			help)
+					cat >&2 <<-__EOF__
+						Usage: $0 [install|update|remove|help]
+
+						This script scans the system for SUID/SGID binaries.  The optional arguments
+						are used when the script is executed as a yum plugin and should not be used
+						in the interactive sessions.
+
+__EOF__
+					exit 1
+					;;
+			*)
+					echo "$0: ERROR: unknown argument '$arg', only install/update/remove/help are supported"
+					;;
+		esac
+	done
+
+	[ -n "$RUN" ] || exit 0
+fi
+
+if ! TMPFILE=$(mktemp -t .check-sugid.XXXXXXXXXX); then
+	echo "$0: ERROR: failed to create a temporary file" >&2
+	exit 1
+fi
+
+trap 'rc=$?; trap - EXIT; rm -f -- $TMPFILE; exit $rc' EXIT HUP INT QUIT ABRT KILL SEGV TERM
+
+test -s /etc/yum/post-actions/check-sugid.action && \
+	grep -E '^#?/.*:(install|update):' /etc/yum/post-actions/check-sugid.action \
+		| grep setcap | cut -f1 -d: | cut -f2 -d'#' | LC_ALL=C sort | uniq > "$TMPFILE" ||:
+CAP_LIST=$(getfattr -Rh -d -m "^security\\.capability" / 2>/dev/null \
+		| sed -n '/^[[:space:]]*#[[:space:]]\+file:[[:space:]]/s,^.*file:[[:space:]]\+\(.*\),/\1,;T;p' \
+		| LC_ALL=C sort -k6 -t' ' | grep -F -v -f "$TMPFILE" \
+		| xargs -i /bin/sh -c 'CAP=$(getcap "{}"); stat "--printf=# UNK: %A/%a %U/%G (${CAP##* = }) %n\n" "{}"' ||:)
+
+test -s /etc/yum/post-actions/check-sugid.action && \
+	grep -E '^#/.*:(install|update):' /etc/yum/post-actions/check-sugid.action \
+		| cut -f1 -d: | cut -f2 -d'#' | LC_ALL=C sort | uniq > "$TMPFILE" ||:
+printf "$CAP_LIST\n" | cut -f6- -d' ' | LC_ALL=C sort | uniq >> "$TMPFILE" ||:
+LIST=$(find / -type f -perm /6000 -printf "# UNK: %M/%m %u/%g () %p\n" 2>/dev/null | LC_ALL=C sort -k6 -t' ' | grep -F -v -f "$TMPFILE" ||:)
+LIST=$(printf "$CAP_LIST\n$LIST\n" | LC_ALL=C sort -k6 -t' ')
+
+if [ -n "$LIST" ]; then
+	cat <<-__EOF__
+		New setuid/setgid/capability binaries were found!
+		===
+		Please review the following file list and add the corresponding entries to
+		the /etc/yum/post-actions/check-sugid.action file.  The output is already
+		formatted in such a way that you can simply copy-and-paste entries to the
+		destination file.  Please note that by default all entries are commented out.
+		The easiest way to enforce the rules defined in the check-suid.action file is
+		to execute the following command once the file is updated:
+
+		grep ':update:' /etc/yum/post-actions/check-sugid.action | grep -vE '^\s*#' | cut -f3- -d':' | sh -x
+
+		Note that on package updates/install the rules will be enforced by the
+		package management software automatically.
+
+		(if you wish to generate the list presented below again you can manually
+		execute $0):
+		==============================================================================
+
+__EOF__
+	printf "$LIST\n" | \
+		while read LINE; do
+			[ -z "$LINE" ] && continue || :
+			FILENAME=$(printf "$LINE" | cut -f6- -d' ')
+			HEADER="${LINE% $FILENAME}"
+			CAPS=$(printf "$HEADER" | cut -f5 -d' ' | sed 's,^(,,;s,[[:space:]]*)$,,')
+			[ -z "$CAPS" ] && HEADER="${HEADER% ()}" ||:
+			PERMS=$(printf "$HEADER" | cut -f2 -d/ | cut -f1 -d' ')
+			printf "$HEADER\n#$FILENAME:install:chmod $PERMS \"$FILENAME\"${CAPS:+ && setcap $CAPS \"$FILENAME\"}\n#$FILENAME:update:chmod $PERMS \"$FILENAME\"${CAPS:+ && setcap $CAPS \"$FILENAME\"}\n\n"
+		    done
+	  exit 1
+fi
