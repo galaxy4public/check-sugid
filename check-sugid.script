@@ -39,19 +39,28 @@ fi
 
 trap 'rc=$?; trap - EXIT; rm -f -- $TMPFILE; exit $rc' EXIT HUP INT QUIT ABRT KILL SEGV TERM
 
+# Determine the locally mounted filesystems
+sed -n '/^[[:space:]]*nodev[[:space:]]/!{s/^[[:space:]]\+/^/;s/[[:space:]]*$/\\s/};T;p' /proc/filesystems > "$TMPFILE" ||:
+FS_LIST=$(sed -n 's/^\([[:space:]]*[^[:space:]]\+\)[[:space:]]\([^[:space:]]\+\)[[:space:]]\([^[:space:]]\+\).*/\3 \2/;T;p' /proc/mounts | grep -f "$TMPFILE" | cut -f2 -d ' ') ||:
+FS_LIST="${FS_LIST:-/}"
+
+> "$TMPFILE"
 test -s /etc/yum/post-actions/check-sugid.action && \
 	grep -E '^#?/.*:(install|update):' /etc/yum/post-actions/check-sugid.action \
 		| grep setcap | cut -f1 -d: | cut -f2 -d'#' | LC_ALL=C sort | uniq > "$TMPFILE" ||:
-CAP_LIST=$(getfattr -Rh -d -m "^security\\.capability" / 2>/dev/null \
-		| sed -n '/^[[:space:]]*#[[:space:]]\+file:[[:space:]]/s,^.*file:[[:space:]]\+\(.*\),/\1,;T;p' \
-		| LC_ALL=C sort -k6 -t' ' | grep -F -v -f "$TMPFILE" \
-		| xargs -i /bin/sh -c 'CAP=$(getcap "{}"); stat "--printf=# UNK: %A/%a %U/%G (${CAP##* = }) %n\n" "{}"' ||:)
 
+CAP_LIST=$(find $FS_LIST -xdev -xautofs -type f -perm /0111 -print0 \
+		| grep -zZ -F -v -f "$TMPFILE" \
+		| xargs -0 -i /bin/sh -c 'CAP=$(getcap "{}"); [ "$CAP" != "${CAP/=}" ] && stat "--printf=# UNK: %A/%a %U/%G (${CAP##* = }) %n\n" "{}"' \
+		||: \
+)
+
+> "$TMPFILE"
 test -s /etc/yum/post-actions/check-sugid.action && \
 	grep -E '^#/.*:(install|update):' /etc/yum/post-actions/check-sugid.action \
 		| cut -f1 -d: | cut -f2 -d'#' | LC_ALL=C sort | uniq > "$TMPFILE" ||:
 printf "$CAP_LIST\n" | cut -f6- -d' ' | LC_ALL=C sort | uniq >> "$TMPFILE" ||:
-LIST=$(find / -type f -perm /6000 -printf "# UNK: %M/%m %u/%g () %p\n" 2>/dev/null | LC_ALL=C sort -k6 -t' ' | grep -F -v -f "$TMPFILE" ||:)
+LIST=$(find $FS_LIST -xdev -xautofs -type f -perm /6000 -printf "# UNK: %M/%m %u/%g () %p\n" 2>/dev/null | LC_ALL=C sort -k6 -t' ' | grep -F -v -f "$TMPFILE" ||:)
 LIST=$(printf "$CAP_LIST\n$LIST\n" | LC_ALL=C sort -k6 -t' ')
 
 if [ -n "$LIST" ]; then
