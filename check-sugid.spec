@@ -1,5 +1,5 @@
 Name:		check-sugid
-Version:	0.0.1
+Version:	0.0.2
 Release:	1
 License:	GPLv3+
 Group:		System Environment/Base/Security
@@ -33,5 +33,8 @@ install -m700 -p '%_sourcedir/%name.script' '%buildroot%_sbindir/%name'
 %attr(0700,root,root) %_sbindir/%name
 
 %changelog
+* Tue Jul 23 2019 (GalaxyMaster) <galaxy-at-openwall.com> - 0.0.2-1
+- SECURITY: introduced proper handling of weird file and directory names.
+
 * Sun Apr 03 2016 (GalaxyMaster) <galaxy-at-openwall.com> - 0.0.1-1
 - Initial release to the public.
