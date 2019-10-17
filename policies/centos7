@@ -18,54 +18,62 @@
 # unnecessary action is executed.
 
 # BAD: -rwsr-xr-x/4755 root/root
-/usr/bin/chage:install:chmod 0700 "/usr/bin/chage"
-/usr/bin/chage:update:chmod 0700 "/usr/bin/chage"
+/usr/bin/chage:install:chmod 0700 /usr/bin/chage
+/usr/bin/chage:update:chmod 0700 /usr/bin/chage
 
 # BAD: -rws--x--x/4711 root/root
-/usr/bin/chfn:install:chmod 0700 "/usr/bin/chfn"
-/usr/bin/chfn:update:chmod 0700 "/usr/bin/chfn"
+/usr/bin/chfn:install:chmod 0700 /usr/bin/chfn
+/usr/bin/chfn:update:chmod 0700 /usr/bin/chfn
 
 # BAD: -rws--x--x/4711 root/root
-/usr/bin/chsh:install:chmod 0700 "/usr/bin/chsh"
-/usr/bin/chsh:update:chmod 0700 "/usr/bin/chsh"
+/usr/bin/chsh:install:chmod 0700 /usr/bin/chsh
+/usr/bin/chsh:update:chmod 0700 /usr/bin/chsh
 
 # OK - -rwsr-xr-x/4755 root/root
 #/usr/bin/crontab:install:chmod 4755 /usr/bin/crontab
 #/usr/bin/crontab:update:chmod 4755 /usr/bin/crontab
 
 # BAD: -rwsr-xr-x/4755 root/root
-/usr/bin/gpasswd:install:chmod 0700 "/usr/bin/gpasswd"
-/usr/bin/gpasswd:update:chmod 0700 "/usr/bin/gpasswd"
+/usr/bin/gpasswd:install:chmod 0700 /usr/bin/gpasswd
+/usr/bin/gpasswd:update:chmod 0700 /usr/bin/gpasswd
 
 # BAD: -rwsr-xr-x/4755 root/root
-/usr/bin/mount:install:chmod 0700 "/usr/bin/mount"
-/usr/bin/mount:update:chmod 0700 "/usr/bin/mount"
+/usr/bin/mount:install:chmod 0700 /usr/bin/mount
+/usr/bin/mount:update:chmod 0700 /usr/bin/mount
 
 # BAD: -rwsr-xr-x/4755 root/root
-/sbin/mount.nfs:install:chmod 0700 "/sbin/mount.nfs"
-/sbin/mount.nfs:update:chmod 0700 "/sbin/mount.nfs"
+/sbin/mount.nfs:install:chmod 0700 /sbin/mount.nfs
+/sbin/mount.nfs:update:chmod 0700 /sbin/mount.nfs
 
 # BAD: -rwsr-xr-x/4755 root/root
-/usr/bin/newgrp:install:chmod 0700 "/usr/bin/newgrp"
-/usr/bin/newgrp:update:chmod 0700 "/usr/bin/newgrp"
+/usr/bin/newgrp:install:chmod 0700 /usr/bin/newgrp
+/usr/bin/newgrp:update:chmod 0700 /usr/bin/newgrp
+
+# OK: -rwxr-xr-x/755 root/root (cap_setgid+ep)
+#/usr/bin/newgidmap:install:chmod 755 /usr/bin/newgidmap; setcap cap_setgid+ep /usr/bin/newgidmap
+#/usr/bin/newgidmap:update:chmod 755 /usr/bin/newgidmap; setcap cap_setgid+ep /usr/bin/newgidmap
+
+# OK: -rwxr-xr-x/755 root/root (cap_setuid+ep)
+#/usr/bin/newuidmap:install:chmod 755 /usr/bin/newuidmap; setcap cap_setuid+ep /usr/bin/newuidmap
+#/usr/bin/newuidmap:update:chmod 755 /usr/bin/newuidmap; setcap cap_setuid+ep /usr/bin/newuidmap
 
 # BAD - -rwsr-xr-x/4755 root/root
 /usr/bin/passwd:install:chmod 0700 /usr/bin/passwd
 /usr/bin/passwd:update:chmod 0700 /usr/bin/passwd
 
 # BAD: -rwxr-xr-x/755 root/root (cap_net_admin,cap_net_raw+p)
-/usr/bin/ping:install:chmod 0711 "/usr/bin/ping" && setcap cap_net_raw+p "/usr/bin/ping"
-/usr/bin/ping:update:chmod 0711 "/usr/bin/ping" && setcap cap_net_raw+p "/usr/bin/ping"
+/usr/bin/ping:install:chmod 0711 /usr/bin/ping; setcap cap_net_raw+p /usr/bin/ping
+/usr/bin/ping:update:chmod 0711 /usr/bin/ping; setcap cap_net_raw+p /usr/bin/ping
 
 # BAD: -rwxr-xr-x/755 root/root (cap_net_admin,cap_net_raw+p)
-/usr/bin/ping6:install:chmod 0711 "/usr/bin/ping6" && setcap cap_net_raw+p "/usr/bin/ping6"
-/usr/bin/ping6:update:chmod 0711 "/usr/bin/ping6" && setcap cap_net_raw+p "/usr/bin/ping6"
+/usr/bin/ping6:install:test -h /usr/bin/ping6 || { chmod 0711 /usr/bin/ping6; setcap cap_net_raw+p /usr/bin/ping6; }
+/usr/bin/ping6:update:test -h /usr/bin/ping6 || { chmod 0711 /usr/bin/ping6; setcap cap_net_raw+p /usr/bin/ping6; }
 
 # BAD: -rwxr-sr-x/2755 root/screen
-/usr/bin/screen:install:chmod 0711 "/usr/bin/screen"
+/usr/bin/screen:install:chmod 0711 /usr/bin/screen
 /usr/bin/screen:install:echo 'alias screen="SCREENDIR=~/.screen screen"' > /etc/profile.d/screen.sh && chmod 0644 /etc/profile.d/screen.sh
 /usr/bin/screen:install:echo "alias screen 'setenv SCREENDIR ~/.screen; \\screen'" > /etc/profile.d/screen.csh && chmod 0644 /etc/profile.d/screen.csh
-/usr/bin/screen:update:chmod 0711 "/usr/bin/screen"
+/usr/bin/screen:update:chmod 0711 /usr/bin/screen
 /usr/bin/screen:update:echo 'alias screen="SCREENDIR=~/.screen screen"' > /etc/profile.d/screen.sh && chmod 0644 /etc/profile.d/screen.sh
 /usr/bin/screen:update:echo "alias screen 'setenv SCREENDIR ~/.screen; \\screen'" > /etc/profile.d/screen.csh && chmod 0644 /etc/profile.d/screen.csh
 
@@ -74,8 +82,8 @@
 /usr/bin/ssh-agent:update:chmod 0711 /usr/bin/ssh-agent
 
 # BAD: -rwsr-xr-x/4755 root/root
-/usr/bin/su:install:chmod 0700 "/usr/bin/su"
-/usr/bin/su:update:chmod 0700 "/usr/bin/su"
+/usr/bin/su:install:chmod 0700 /usr/bin/su
+/usr/bin/su:update:chmod 0700 /usr/bin/su
 
 # BAD - ---s--x--x/4111 root/root
 /usr/bin/sudo:install:chmod 0700 /usr/bin/sudo
@@ -86,44 +94,52 @@
 /usr/bin/sudoedit:update:chmod 0700 /usr/bin/sudoedit
 
 # BAD: -rwsr-xr-x/4755 root/root
-/usr/bin/umount:install:chmod 0700 "/usr/bin/umount"
-/usr/bin/umount:update:chmod 0700 "/usr/bin/umount"
+/usr/bin/umount:install:chmod 0700 /usr/bin/umount
+/usr/bin/umount:update:chmod 0700 /usr/bin/umount
 
 # BAD: -r-xr-sr-x/2555 root/tty
-/usr/bin/wall:install:chmod 0700 "/usr/bin/wall"
-/usr/bin/wall:update:chmod 0700 "/usr/bin/wall"
+/usr/bin/wall:install:chmod 0700 /usr/bin/wall
+/usr/bin/wall:update:chmod 0700 /usr/bin/wall
 
 # BAD: -rwxr-sr-x/2755 root/tty
-/usr/bin/write:install:chmod 0700 "/usr/bin/write"
-/usr/bin/write:update:chmod 0700 "/usr/bin/write"
+/usr/bin/write:install:chmod 0700 /usr/bin/write
+/usr/bin/write:update:chmod 0700 /usr/bin/write
 
 # BAD: -rwsr-x---/4750 root/dbus
-/usr/lib64/dbus-1/dbus-daemon-launch-helper:install:chmod 0750 "/usr/lib64/dbus-1/dbus-daemon-launch-helper"
-/usr/lib64/dbus-1/dbus-daemon-launch-helper:update:chmod 0750 "/usr/lib64/dbus-1/dbus-daemon-launch-helper"
+/usr/lib64/dbus-1/dbus-daemon-launch-helper:install:chmod 0750 /usr/lib64/dbus-1/dbus-daemon-launch-helper
+/usr/lib64/dbus-1/dbus-daemon-launch-helper:update:chmod 0750 /usr/lib64/dbus-1/dbus-daemon-launch-helper
 
 # BAD: ---x--s--x/2111 root/ssh_keys
-/usr/libexec/openssh/ssh-keysign:install:chmod 0711 "/usr/libexec/openssh/ssh-keysign"
-/usr/libexec/openssh/ssh-keysign:update:chmod 0711 "/usr/libexec/openssh/ssh-keysign"
+/usr/libexec/openssh/ssh-keysign:install:chmod 0711 /usr/libexec/openssh/ssh-keysign
+/usr/libexec/openssh/ssh-keysign:update:chmod 0711 /usr/libexec/openssh/ssh-keysign
+
+# OK: -rwsr-x---/4750 root/sssd (See: https://docs.pagure.org/SSSD.sssd/design_pages/not_root_sssd.html)
+#/usr/libexec/sssd/krb5_child:install:chmod 4750 /usr/libexec/sssd/krb5_child
+#/usr/libexec/sssd/krb5_child:update:chmod 4750 /usr/libexec/sssd/krb5_child
+
+# OK: -rwsr-x---/4750 root/sssd (See: https://docs.pagure.org/SSSD.sssd/design_pages/not_root_sssd.html)
+#/usr/libexec/sssd/ldap_child:install:chmod 4750 /usr/libexec/sssd/ldap_child
+#/usr/libexec/sssd/ldap_child:update:chmod 4750 /usr/libexec/sssd/ldap_child
 
 # OK: -rwx--s--x/2711 root/utmp
-#/usr/libexec/utempter/utempter:install:chmod 2711 "/usr/libexec/utempter/utempter"
-#/usr/libexec/utempter/utempter:update:chmod 2711 "/usr/libexec/utempter/utempter"
+#/usr/libexec/utempter/utempter:install:chmod 2711 /usr/libexec/utempter/utempter
+#/usr/libexec/utempter/utempter:update:chmod 2711 /usr/libexec/utempter/utempter
 
 # BAD: -rwxr-xr-x/755 root/root (cap_net_raw+p)
-/usr/sbin/arping:install:chmod 0700 "/usr/sbin/arping" && setcap cap_net_raw+p "/usr/sbin/arping"
-/usr/sbin/arping:update:chmod 0700 "/usr/sbin/arping" && setcap cap_net_raw+p "/usr/sbin/arping"
+/usr/sbin/arping:install:chmod 0700 /usr/sbin/arping; setcap cap_net_raw+p /usr/sbin/arping
+/usr/sbin/arping:update:chmod 0700 /usr/sbin/arping; setcap cap_net_raw+p /usr/sbin/arping
 
 # BAD: -rwxr-xr-x/755 root/root (cap_net_raw+p)
-/usr/sbin/clockdiff:install:chmod 0700 "/usr/sbin/clockdiff" && setcap cap_net_raw+p "/usr/sbin/clockdiff"
-/usr/sbin/clockdiff:update:chmod 0700 "/usr/sbin/clockdiff" && setcap cap_net_raw+p "/usr/sbin/clockdiff"
+/usr/sbin/clockdiff:install:chmod 0700 /usr/sbin/clockdiff; setcap cap_net_raw+p /usr/sbin/clockdiff
+/usr/sbin/clockdiff:update:chmod 0700 /usr/sbin/clockdiff; setcap cap_net_raw+p /usr/sbin/clockdiff
 
 # BAD: -rwxr-sr-x/2755 root/root
-/usr/sbin/netreport:install:chmod 0700 "/usr/sbin/netreport"
-/usr/sbin/netreport:update:chmod 0700 "/usr/sbin/netreport"
+/usr/sbin/netreport:install:chmod 0700 /usr/sbin/netreport
+/usr/sbin/netreport:update:chmod 0700 /usr/sbin/netreport
 
 # BAD: -rwsr-xr-x/4755 root/root
-/usr/sbin/pam_timestamp_check:install:chmod 0711 "/usr/sbin/pam_timestamp_check" && setcap cap_dac_read_search+p "/usr/sbin/pam_timestamp_check"
-/usr/sbin/pam_timestamp_check:update:chmod 0711 "/usr/sbin/pam_timestamp_check" && setcap cap_dac_read_search+p "/usr/sbin/pam_timestamp_check"
+/usr/sbin/pam_timestamp_check:install:chmod 0711 /usr/sbin/pam_timestamp_check; setcap cap_dac_read_search+p /usr/sbin/pam_timestamp_check
+/usr/sbin/pam_timestamp_check:update:chmod 0711 /usr/sbin/pam_timestamp_check; setcap cap_dac_read_search+p /usr/sbin/pam_timestamp_check
 
 # OK - -rwxr-sr-x/2755 root/postdrop
 #/usr/sbin/postdrop:install:chmod 2755 /usr/sbin/postdrop
@@ -134,10 +150,10 @@
 #/usr/sbin/postqueue:update:chmod 2755 /usr/sbin/postqueue
 
 # BAD: -rwsr-xr-x/4755 root/root
-/usr/sbin/unix_chkpwd:install:chmod 0711 "/usr/sbin/unix_chkpwd" && setcap cap_dac_read_search+p "/usr/sbin/unix_chkpwd"
-/usr/sbin/unix_chkpwd:update:chmod 0711 "/usr/sbin/unix_chkpwd" && setcap cap_dac_read_search+p "/usr/sbin/unix_chkpwd"
+/usr/sbin/unix_chkpwd:install:chmod 0711 /usr/sbin/unix_chkpwd; setcap cap_dac_read_search+p /usr/sbin/unix_chkpwd
+/usr/sbin/unix_chkpwd:update:chmod 0711 /usr/sbin/unix_chkpwd; setcap cap_dac_read_search+p /usr/sbin/unix_chkpwd
 
 # BAD: -rwsr-xr-x/4755 root/root
-/usr/sbin/usernetctl:install:chmod 0700 "/usr/sbin/usernetctl"
-/usr/sbin/usernetctl:update:chmod 0700 "/usr/sbin/usernetctl"
+/usr/sbin/usernetctl:install:chmod 0700 /usr/sbin/usernetctl
+/usr/sbin/usernetctl:update:chmod 0700 /usr/sbin/usernetctl
 

@@ -49,7 +49,8 @@ fi
 > "$TMPFILE"
 test -s /etc/yum/post-actions/check-sugid.action && \
 	grep -E '^#?/.*:(install|update):' /etc/yum/post-actions/check-sugid.action \
-		| grep setcap | cut -f1 -d: | cut -f2 -d'#' | LC_ALL=C sort | uniq > "$TMPFILE" ||:
+		| grep setcap | cut -f1 -d: | cut -f2 -d'#' | LC_ALL=C sort | uniq \
+		| sed '/^$/d' > "$TMPFILE" ||:
 
 CAP_LIST=$(find $FS_LIST -xdev -type f -perm /0111 -print0 \
 		| grep -zZ -F -v -f "$TMPFILE" \
@@ -63,7 +64,8 @@ CAP_LIST=$(find $FS_LIST -xdev -type f -perm /0111 -print0 \
 test -s /etc/yum/post-actions/check-sugid.action && \
 	grep -E '^#/.*:(install|update):' /etc/yum/post-actions/check-sugid.action \
 		| cut -f1 -d: | cut -f2 -d'#' | LC_ALL=C sort | uniq > "$TMPFILE" ||:
-printf '%s\n' "$CAP_LIST" | cut -f6- -d' ' | LC_ALL=C sort | uniq >> "$TMPFILE" ||:
+printf '%s\n' "$CAP_LIST" | cut -f6- -d' ' | LC_ALL=C sort | uniq \
+	| sed '/^$/d' >> "$TMPFILE" ||:
 LIST=$(find $FS_LIST -xdev -type f -perm /6000 -printf "# UNK: %M/%m %u/%g () %p\0" 2>/dev/null \
 		| sed -z '/^[[:space:]]*$/d;s/\n/\\n/g;s/$/\n/' | tr -d '\0' \
 		| LC_ALL=C sort -k6 -t' ' | grep -F -v -f "$TMPFILE" \
