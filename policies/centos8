@@ -1,0 +1,110 @@
+# This dnf post-transaction action ensures that no unneeded SUID/SGID binaries
+# are present on the system after updates.  The list was carefully reviewed
+# and all non-essential binaries have been restricted either to be executed
+# by the root user only, or completely disabled through chmod 0 <binary>.
+# In addition to addressing SUID/SGID binaries there are entries that adjust
+# extensive capabilities to ensure that the least privilige principle is
+# followed.
+
+# If a binary is OK to retain its SUID/SGID bits, document its permissions
+# and ownership in a coment right above the corresponding lines.  Also, it
+# is a good idea to comment out the action lines for that binary so no
+# unnecessary action is executed.
+
+# Source: https://github.com/galaxy4public/check-sugid/blob/master/policies/centos8
+
+# OK: -rwxr-xr-x/755 root/root (cap_net_raw+p)
+#/usr/sbin/arping:in:chmod -v 755 '/usr/sbin/arping'; setcap 'cap_net_raw+p' '/usr/sbin/arping'
+
+# BAD: -rwsr-xr-x/4755 root/root
+/usr/bin/chage:in:chmod -v 0700 '/usr/bin/chage'
+
+# BAD: -rwxr-xr-x/755 root/root (cap_net_raw+p)
+/usr/sbin/clockdiff:in:chmod -v 700 '/usr/sbin/clockdiff'; setcap 'cap_net_raw+p' '/usr/sbin/clockdiff'
+
+# OK: -rwsr-xr-x/4755 root/root
+#/usr/bin/crontab:in:chmod 4755 '/usr/bin/crontab'
+
+# BAD: -rwsr-xr-x/4755 root/root
+/usr/bin/gpasswd:in:chmod -v 0700 '/usr/bin/gpasswd'
+
+# BAD: -rwsr-xr-x/4755 root/root
+/usr/bin/mount:in:chmod -v 0700 '/usr/bin/mount'
+
+# BAD: -rwsr-xr-x/4755 root/root
+/sbin/mount.nfs:in:chmod -v 0700 '/sbin/mount.nfs'
+
+# OK: -rwxr-xr-x/755 root/root (cap_setgid+ep)
+#/usr/bin/newgidmap:in:chmod -v 755 '/usr/bin/newgidmap'; setcap 'cap_setgid+ep' '/usr/bin/newgidmap'
+
+# BAD: -rwsr-xr-x/4755 root/root
+/usr/bin/newgrp:in:chmod -v 0700 '/usr/bin/newgrp'
+
+# BAD: -rwxr-xr-x/755 root/root (cap_chown,cap_dac_override,cap_dac_read_search,cap_fowner,cap_setpcap,cap_sys_admin,cap_audit_write+ep)
+/usr/bin/newrole:in:chmod -v 0755 '/usr/bin/newrole'; setcap -r '/usr/bin/newrole'
+
+# OK: -rwxr-xr-x/755 root/root (cap_setuid+ep)
+#/usr/bin/newuidmap:in:chmod -v 755 '/usr/bin/newuidmap'; setcap 'cap_setuid+ep' '/usr/bin/newuidmap'
+
+# BAD: -rwsr-xr-x/4755 root/root
+/usr/sbin/pam_timestamp_check:in:chmod -v 0711 '/usr/sbin/pam_timestamp_check'
+
+# BAD: -rwsr-xr-x/4755 root/root
+/usr/bin/passwd:in:chmod -v 0700 '/usr/bin/passwd'
+
+# BAD: -rwxr-xr-x/755 root/root (cap_net_admin,cap_net_raw+p)
+/usr/bin/ping:in:chmod -v 711 '/usr/bin/ping'; setcap 'cap_net_raw+p' '/usr/bin/ping'
+
+# OK: -rwxr-sr-x/2755 root/postdrop
+#/usr/sbin/postdrop:in:chmod -v 2755 '/usr/sbin/postdrop'
+
+# OK: -rwxr-sr-x/2755 root/postdrop
+#/usr/sbin/postqueue:in:chmod -v 2755 '/usr/sbin/postqueue'
+
+# BAD: -rwxr-sr-x/2755 root/screen
+/usr/bin/screen:in:chmod -v 0711 '/usr/bin/screen'
+/usr/bin/screen:in:echo 'alias screen="SCREENDIR=~/.screen screen"' > /etc/profile.d/screen.sh && chmod 0644 /etc/profile.d/screen.sh
+/usr/bin/screen:in:echo "alias screen 'setenv SCREENDIR ~/.screen; \\screen'" > /etc/profile.d/screen.csh && chmod 0644 /etc/profile.d/screen.csh
+
+# BAD: -rwsr-xr-x/4755 root/root
+/usr/bin/su:in:chmod -v 0700 '/usr/bin/su'
+
+# BAD: ---s--x--x/4111 root/root
+/usr/bin/sudo:in:chmod -v 0700 '/usr/bin/sudo' ; echo '*** Please see https://dmitry.khlebnikov.net/2015/07/18/should-we-use-sudo-for-day-to-day-activities/'
+
+# BAD: -rwsr-xr-x/4755 root/root
+/usr/bin/umount:in:chmod -v 0700 '/usr/bin/umount'
+
+# BAD: -rwxr-sr-x/2755 root/tty
+/usr/bin/write:in:chmod -v 0700 '/usr/bin/write'
+
+# BAD: -rwsr-x---/4750 root/dbus
+/usr/libexec/dbus-1/dbus-daemon-launch-helper:in:chmod -v 0750 '/usr/libexec/dbus-1/dbus-daemon-launch-helper'
+
+# BAD: -r-xr-sr-x/2555 root/ssh_keys
+/usr/libexec/openssh/ssh-keysign:in:chmod -v 0711 '/usr/libexec/openssh/ssh-keysign'
+
+# OK: -rwx--s--x/2711 root/utmp
+#/usr/libexec/utempter/utempter:in:chmod -v 2711 '/usr/libexec/utempter/utempter'
+
+# BAD: -rwsr-xr-x/4755 root/root
+/usr/sbin/unix_chkpwd:in:chmod -v 0711 '/usr/sbin/unix_chkpwd'; setcap 'cap_dac_read_search+p' '/usr/sbin/unix_chkpwd'
+
+# OK: -rwsr-x---/4750 root/sssd (See: https://docs.pagure.org/SSSD.sssd/design_pages/not_root_sssd.html)
+#/usr/libexec/sssd/krb5_child:in:chmod -v 4750 '/usr/libexec/sssd/krb5_child'
+
+# OK: -rwsr-x---/4750 root/sssd (See: https://docs.pagure.org/SSSD.sssd/design_pages/not_root_sssd.html)
+#/usr/libexec/sssd/ldap_child:in:chmod -v 4750 '/usr/libexec/sssd/ldap_child'
+
+# UNK: -rwsr-x---/4750 root/sssd (Requires investigation)
+#/usr/libexec/sssd/proxy_child:in:chmod -v 4750 '/usr/libexec/sssd/proxy_child'
+
+# UNK: -rwsr-x---/4750 root/sssd (Requires investigation)
+#/usr/libexec/sssd/selinux_child:in:chmod -v 4750 '/usr/libexec/sssd/selinux_child'
+
+# BAD: -rwsr-xr-x/4755 root/root
+/usr/bin/pkexec:in:chmod -v 0700 '/usr/bin/pkexec'
+
+# BAD: -rwsr-xr-x/4755 root/root
+/usr/lib/polkit-1/polkit-agent-helper-1:in:chmod -v 0700 '/usr/lib/polkit-1/polkit-agent-helper-1'; echo '*** You realy should not use PolicyKit on servers :)'
+
