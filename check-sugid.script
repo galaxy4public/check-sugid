@@ -1,13 +1,37 @@
 #!/bin/sh
-set -e
+set -eu -o pipefail
 
-# The following block allows to use this script as a yum plugin when there were
+PMGR=
+PMGR_ACTION_FILE=
+PMGR_SELECTOR=
+for tool in yum dnf
+do
+	if type -p "$tool" >/dev/null 2>/dev/null; then
+		PMGR="$tool"
+	fi
+done
+
+case "${tool##*/}" in
+	dnf)
+		PMGR_ACTION_FILE=/etc/dnf/plugins/post-transaction-actions.d/check-sugid.action
+		PMGR_SELECTOR='in'
+		;;
+	yum)
+		PMGR_ACTION_FILE="$PMGR_ACTION_FILE"
+		PMGR_SELECTOR='(install|update)'
+		;;
+	*)
+		echo "$0: ERROR: cannot determine the package manager, internal error"
+		exit 1
+esac
+
+# The following block allows to use this script as a yum/dnf plugin when there were
 # packages installed and/or updated.
-if [ -n "$1" ]; then
+if [ -n "${1:-}" ]; then
 	unset RUN
 	for arg in "$@"; do
-		case $arg in
-			install|update)
+		case "$arg" in
+			install|update|upgrade|reinstall|downgrade)
 					RUN=1
 					;;
 			remove)
@@ -17,15 +41,15 @@ if [ -n "$1" ]; then
 						Usage: $0 [install|update|remove|help]
 
 						This script scans the system for SUID/SGID binaries.  The optional arguments
-						are used when the script is executed as a yum plugin and should not be used
+						are used when the script is executed as a ${PMGR##*/} plugin and should not be used
 						in the interactive sessions.
 
 __EOF__
 					exit 1
 					;;
 			*)
-					echo "$0: ERROR: unknown argument '$arg', only install/update/remove/help are supported"
-					;;
+					echo "$0: ERROR: unknown argument '$arg', only install/update/upgrade/reinstall/downgrade/remove/help are supported"
+					exit 1
 		esac
 	done
 
@@ -47,8 +71,8 @@ if [ -z "${FS_LIST:-}" ]; then
 fi
 
 > "$TMPFILE"
-test -s /etc/yum/post-actions/check-sugid.action && \
-	grep -E '^#?/.*:(install|update):' /etc/yum/post-actions/check-sugid.action \
+test -s "$PMGR_ACTION_FILE" && \
+	grep -E '^#?/.*:'"$PMGR_SELECTOR"':' "$PMGR_ACTION_FILE" \
 		| grep setcap | cut -f1 -d: | cut -f2 -d'#' | LC_ALL=C sort | uniq \
 		| sed '/^$/d' > "$TMPFILE" ||:
 
@@ -61,8 +85,8 @@ CAP_LIST=$(find $FS_LIST -xdev -type f -perm /0111 -print0 \
 )
 
 > "$TMPFILE"
-test -s /etc/yum/post-actions/check-sugid.action && \
-	grep -E '^#/.*:(install|update):' /etc/yum/post-actions/check-sugid.action \
+test -s "$PMGR_ACTION_FILE" && \
+	grep -E '^#/.*:'"$PMGR_SELECTOR"':' "$PMGR_ACTION_FILE" \
 		| cut -f1 -d: | cut -f2 -d'#' | LC_ALL=C sort | uniq > "$TMPFILE" ||:
 printf '%s\n' "$CAP_LIST" | cut -f6- -d' ' | LC_ALL=C sort | uniq \
 	| sed '/^$/d' >> "$TMPFILE" ||:
@@ -75,23 +99,24 @@ LIST=$(printf '%s\n%s\n' "$CAP_LIST" "$LIST" | LC_ALL=C sort -k6 -t' ')
 
 if [ -n "$LIST" ]; then
 	cat <<-__EOF__
-		New setuid/setgid/capability binaries were found!
-		===
-		Please review the following file list and add the corresponding entries to
-		the /etc/yum/post-actions/check-sugid.action file.  The output is already
-		formatted in such a way that you can simply copy-and-paste entries to the
-		destination file.  Please note that by default all entries are commented out.
-		The easiest way to enforce the rules defined in the check-suid.action file is
-		to execute the following command once the file is updated:
-
-		grep ':update:' /etc/yum/post-actions/check-sugid.action | grep -vE '^\s*#' | cut -f3- -d':' | sh -x
-
-		Note that on package updates/install the rules will be enforced by the
-		package management software automatically.
-
-		(if you wish to generate the list presented below again you can manually
-		execute $0):
-		==============================================================================
+		# New setuid/setgid/capability binaries were found!
+		# ===
+		# Please review the following file list and add the corresponding entries to
+		# the "$PMGR_ACTION_FILE" file.
+		# The output is already formatted in such a way that you can simply
+		# copy-and-paste entries to the destination file.  Please note that by
+		# default all entries are commented out.  The easiest way to enforce the
+		# rules defined in the check-suid.action file is to execute the following
+		# command once the file is updated:
+		#
+		# grep ':$PMGR_SELECTOR:' "$PMGR_ACTION_FILE" | grep -vE '^\s*(#|\*:)' | cut -f3- -d':' | sort -u | sh -x
+		#
+		# Note that on package updates/install the rules will be enforced by the
+		# package management software automatically.
+		#
+		# (if you wish to generate the list presented below again you can manually
+		# execute $0):
+		#==============================================================================
 
 __EOF__
 	printf '%s\n' "$LIST" | \
@@ -102,10 +127,10 @@ __EOF__
 			CAPS=$(printf '%s' "$HEADER" | cut -f5 -d' ' | sed 's,^(,,;s,[[:space:]]*)$,,')
 			[ -z "$CAPS" ] && HEADER="${HEADER% ()}" ||:
 			PERMS=$(printf '%s' "$HEADER" | cut -f2 -d/ | cut -f1 -d' ')
-			printf '%s\n#%s:install:chmod %d '"'%s'" "$HEADER" "$FILENAME" "$PERMS" "${FILENAME//\\n/\'\$\'\\n\'\'}"
-			[ -n "${CAPS:-}" ] && printf '; setcap "%s" '"'%s'" "$CAPS" "${FILENAME//\\n/\'\$\'\\n\'\'}" ||:
-			printf '\n#%s:update:chmod %d '"'%s'" "$FILENAME" "$PERMS" "${FILENAME//\\n/\'\$\'\\n\'\'}"
-			[ -n "${CAPS:-}" ] && printf '; setcap "%s" '"'%s'" "$CAPS" "${FILENAME//\\n/\'\$\'\\n\'\'}" ||:
+			for selector in ${PMGR_SELECTOR//(|)/ }; do
+				printf '%s\n#%s:%s:chmod -v %d '"'%s'" "$HEADER" "$FILENAME" "$selector" "$PERMS" "${FILENAME//\\n/\'\$\'\\n\'\'}"
+				[ -n "${CAPS:-}" ] && printf '; setcap '"'%s'"' '"'%s'" "$CAPS" "${FILENAME//\\n/\'\$\'\\n\'\'}" ||:
+			done
 			printf '\n\n'
 		    done
 	  exit 1
